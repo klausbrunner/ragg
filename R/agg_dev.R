@@ -582,3 +582,65 @@ agg_webp <- function(
   )
   invisible()
 }
+
+#' Draw an animation to a WebP file
+#'
+#' The WebP format is a raster image format that provides improved lossless (and
+#' lossy) compression for images on the web. Transparency is supported.
+#'
+#' @inheritParams agg_webp
+#' @param delay      Per-frame delay in milliseconds (single integer)
+#' @param loop       Number of loops (0 = infinite)
+#' @export
+agg_webp_anim <- function(
+  filename   = 'frame%03d.webp',
+  width      = 480,
+  height     = 480,
+  units      = 'px',
+  pointsize  = 12,
+  background = 'white',
+  res        = 72,
+  scaling    = 1,
+  snap_rect  = TRUE,
+  lossy      = FALSE,
+  quality    = 80,
+  delay      = 100L,
+  loop       = 0L,
+  bg
+) {
+  if (
+    environmentName(parent.env(parent.frame())) == "knitr" &&
+      deparse(sys.call(), nlines = 1, width.cutoff = 500) ==
+        'dev(filename = filename, width = dim[1], height = dim[2], ...)'
+  ) {
+    units <- 'in'
+  }
+
+  if (max(width, height) > 16383) {
+    stop("WebP does not support image width or height larger than 16383 px",
+         call. = FALSE)
+  }
+
+  file <- validate_path(filename)
+  dim <- get_dims(width, height, units, res)
+  background <- if (missing(bg)) background else bg
+
+  .Call(
+    "agg_webp_anim_c",
+    file,
+    dim[1],
+    dim[2],
+    as.numeric(pointsize),
+    background,
+    as.numeric(res),
+    as.numeric(scaling),
+    as.logical(snap_rect),
+    as.logical(lossy),
+    as.integer(quality),
+    as.integer(delay),
+    as.integer(loop),
+    PACKAGE = "ragg"
+  )
+
+  invisible()
+}
