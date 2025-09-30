@@ -638,7 +638,7 @@ void AggDevice<PIXFMT, R_COLOR, BLNDFMT>::charMetric(int c, const char *family, 
       Rf_ucstoutf8(str, (unsigned int) c);
       const char* str2 = Rf_utf8Toutf8NoPUA(str);
       int n = 0;
-      uint32_t* res = converter.convert(str2, n);
+      const uint32_t* res = converter.convert_to_ucs(str2, n);
       if (n > 0) c = res[0];
     }
 #endif
