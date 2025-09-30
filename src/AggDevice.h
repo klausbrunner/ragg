@@ -69,6 +69,7 @@ public:
   unsigned char* buffer;
 
   int pageno;
+  bool changed;
   std::string file;
   R_COLOR background;
   int background_int;
@@ -356,6 +357,7 @@ protected:
       if (evenodd) ras.filling_rule(agg::fill_even_odd);
 
       if (recording_mask == NULL && recording_raster == NULL) {
+        changed = true;
         solid_renderer.color(convertColour(fill));
         if (current_mask == NULL) {
           render<agg::scanline_p8>(ras, ras_clip, slp, solid_renderer, current_clip != NULL);
@@ -411,6 +413,7 @@ protected:
     agg::scanline_u8 slu;
     setStroke(ras, path, lty, lwd, lend, ljoin, lmitre);
     if (recording_mask == NULL && recording_raster == NULL) {
+      changed = true;
       solid_renderer.color(convertColour(col));
       if (current_mask == NULL) {
         render<agg::scanline_u8>(ras, ras_clip, slu, solid_renderer, current_clip != NULL);
@@ -537,6 +540,7 @@ void AggDevice<PIXFMT, R_COLOR, BLNDFMT>::newPage(unsigned int bg) {
     renderer.clear(background);
   }
   pageno++;
+  changed = true;
 }
 template<class PIXFMT, class R_COLOR, typename BLNDFMT>
 void AggDevice<PIXFMT, R_COLOR, BLNDFMT>::close() {
@@ -1044,6 +1048,7 @@ void AggDevice<PIXFMT, R_COLOR, BLNDFMT>::useGroup(SEXP ref, SEXP trans) {
 
   agg::scanline_u8 sl;
   if (recording_mask == NULL && recording_raster == NULL) {
+    changed = true;
     if (current_mask == NULL) {
       it->second->draw(mtx, ras, ras_clip, sl, renderer, clip);
     } else {
@@ -1366,6 +1371,7 @@ void AggDevice<PIXFMT, R_COLOR, BLNDFMT>::drawRaster(unsigned int *raster, int w
 
   agg::scanline_u8 slu;
   if (recording_mask == NULL && recording_raster == NULL) {
+    changed = true;
     if (current_mask == NULL) {
       render_raster<pixfmt_r_raster, BLNDFMT>(rbuf, w, h, ras, ras_clip, slu, interpolator, renderer, interpolate, current_clip != NULL, false);
     } else {
@@ -1446,6 +1452,7 @@ void AggDevice<PIXFMT, R_COLOR, BLNDFMT>::drawText(double x, double y, const cha
 
   agg::scanline_u8 slu;
   if (recording_mask == NULL && recording_raster == NULL) {
+    changed = true;
     solid_renderer.color(convertColour(col));
     if (current_mask == NULL) {
       t_ren.template plot_text<BLNDFMT>(x, y, str, rot, hadj, solid_renderer, renderer, slu, device_id, ras_clip, current_clip != NULL, recording_path);
@@ -1535,6 +1542,7 @@ void AggDevice<PIXFMT, R_COLOR, BLNDFMT>::drawGlyph(int n, int *glyphs,
 
   agg::scanline_u8 slu;
   if (recording_mask == NULL && recording_raster == NULL) {
+    changed = true;
     solid_renderer.color(convertColour(colour));
     if (current_mask == NULL) {
       t_ren.template plot_glyphs<BLNDFMT>(n, glyphs, x, y, rot, solid_renderer, renderer, slu, ras_clip, current_clip != NULL, recording_path);
