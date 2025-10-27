@@ -7,6 +7,7 @@
 #include <vector>
 #include <memory>
 #include <stdexcept>
+#include <string>
 
 #include "AggDevice.h"
 #include "files.h"
@@ -141,7 +142,13 @@ class AggDeviceWebPAnim : public AggDevice<PIXFMT> {
   }
 
   void close() {
-    savePage();
+    if (!savePage()) {
+      throw std::runtime_error("Failed to encode final WebP frame");
+    }
+
+    if (frames.empty()) {
+      throw std::runtime_error("WebP animation has no frames to write");
+    }
 
     for (size_t i = 0; i < frames.size(); ++i) {
       const auto& raw = frames[i];
@@ -157,29 +164,32 @@ class AggDeviceWebPAnim : public AggDevice<PIXFMT> {
       finfo.blend_method = WEBP_MUX_BLEND;
       WebPMuxError frame_err = WebPMuxPushFrame(mux.get(), &finfo, 1);
       if (frame_err != WEBP_MUX_OK) {
-        Rf_error("Failed to push WebP frame %zu/%zu: %s (%zu bytes)",
-                 i + 1, frames.size(), mux_error_name(frame_err), raw.size());
+        std::string msg = "Failed to push WebP frame " +
+                          std::to_string(i + 1) + "/" +
+                          std::to_string(frames.size()) + ": " +
+                          mux_error_name(frame_err) + " (" +
+                          std::to_string(raw.size()) + " bytes)";
+        throw std::runtime_error(msg);
       }
     }
 
-    try {
-      auto out = make_webp_data();
-      WebPMuxError mux_err = WebPMuxAssemble(mux.get(), out.get());
-      if (mux_err != WEBP_MUX_OK) {
-        Rf_error("WebP mux assemble failed: %s (%zu frames)", mux_error_name(mux_err), frames.size());
-      }
-
-      auto fd = make_file(this->file.c_str(), "wb");
-      if (fwrite(out->bytes, 1, out->size, fd.get()) != out->size) {
-        Rf_error("Failed to write WebP animation file");
-      }
-
-    } catch (...) {
-      AggDevice<PIXFMT>::close();
-      throw;
+    auto out = make_webp_data();
+    WebPMuxError mux_err = WebPMuxAssemble(mux.get(), out.get());
+    if (mux_err != WEBP_MUX_OK) {
+      std::string msg = "WebP mux assemble failed: " +
+                        std::string(mux_error_name(mux_err)) + " (" +
+                        std::to_string(frames.size()) + " frames)";
+      throw std::runtime_error(msg);
     }
 
-    AggDevice<PIXFMT>::close();
+    auto fd = make_file(this->file.c_str(), "wb");
+    if (fwrite(out->bytes, 1, out->size, fd.get()) != out->size) {
+      throw std::runtime_error("Failed to write WebP animation file");
+    }
+
+    if (this->pageno == 0) {
+      this->pageno = 1;
+    }
   }
 
  private:
